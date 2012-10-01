@@ -112,7 +112,8 @@ L.Map.include(L.Browser.svg || !L.Browser.vml ? {} : {
 
 		var root = this._pathRoot = document.createElement('div');
 		root.className = 'leaflet-vml-container';
-		this._panes.overlayPane.appendChild(root);
+		//this._panes.overlayPane.appendChild(root);
+        this._panes.subtilePane.appendChild(this._pathRoot);
 
 		this.on('moveend', this._updatePathViewport);
 		this._updatePathViewport();

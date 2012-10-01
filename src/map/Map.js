@@ -444,6 +444,8 @@ L.Map = L.Class.extend({
 
 		this._mapPane = panes.mapPane = this._createPane('leaflet-map-pane', this._container);
 
+        this._subtilePane = panes.subtilePane = this._createPane('leaflet-subtile-pane', this._mapPane);
+
 		this._tilePane = panes.tilePane = this._createPane('leaflet-tile-pane', this._mapPane);
 		panes.objectsPane = this._createPane('leaflet-objects-pane', this._mapPane);
 		panes.shadowPane = this._createPane('leaflet-shadow-pane');

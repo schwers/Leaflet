@@ -4,6 +4,7 @@
 .leaflet-tile,
 .leaflet-marker-icon,
 .leaflet-marker-shadow,
+.leaflet-subtile-pane,
 .leaflet-tile-pane,
 .leaflet-overlay-pane,
 .leaflet-shadow-pane,
@@ -51,12 +52,13 @@
 	height: 0;
 	}
 
-.leaflet-tile-pane    { z-index: 2; }
-.leaflet-objects-pane { z-index: 3; }
-.leaflet-overlay-pane { z-index: 4; }
-.leaflet-shadow-pane  { z-index: 5; }
-.leaflet-marker-pane  { z-index: 6; }
-.leaflet-popup-pane   { z-index: 7; }
+.leaflet-subtile-pane { z-index: 2; }
+.leaflet-tile-pane    { z-index: 3; }
+.leaflet-objects-pane { z-index: 4; }
+.leaflet-overlay-pane { z-index: 5; }
+.leaflet-shadow-pane  { z-index: 6; }
+.leaflet-marker-pane  { z-index: 7; }
+.leaflet-popup-pane   { z-index: 8; }
 
 
 /* control positioning */
