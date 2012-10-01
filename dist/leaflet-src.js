@@ -120,6 +120,8 @@ L.Util = {
 			var value = data[key];
 			if (!data.hasOwnProperty(key)) {
 				throw new Error('No value provided for variable ' + str);
+			} else if (typeof value === 'function') {
+				value = value(data);
 			}
 			return value;
 		});
@@ -1890,6 +1892,8 @@ L.Map = L.Class.extend({
 		var panes = this._panes = {};
 
 		this._mapPane = panes.mapPane = this._createPane('leaflet-map-pane', this._container);
+
+        this._subtilePane = panes.subtilePane = this._createPane('leaflet-subtile-pane', this._mapPane);
 
 		this._tilePane = panes.tilePane = this._createPane('leaflet-tile-pane', this._mapPane);
 		panes.objectsPane = this._createPane('leaflet-objects-pane', this._mapPane);
@@ -3691,6 +3695,7 @@ L.Popup = L.Class.extend({
 			        L.DomUtil.create('a', prefix + '-close-button', container);
 			closeButton.href = '#close';
 			closeButton.innerHTML = '&#215;';
+			L.DomEvent.disableClickPropagation(closeButton);
 
 			L.DomEvent.on(closeButton, 'click', this._onCloseButtonClick, this);
 		}
@@ -4161,7 +4166,8 @@ L.Path = L.Class.extend({
 		fillColor: null, //same as color by default
 		fillOpacity: 0.2,
 
-		clickable: true
+		clickable: true,
+        layer: 'overlay'
 	},
 
 	initialize: function (options) {
@@ -4172,7 +4178,7 @@ L.Path = L.Class.extend({
 		this._map = map;
 
 		if (!this._container) {
-			this._initElements();
+			this._initElements(this.options.layer);
 			this._initEvents();
 		}
 
@@ -4180,7 +4186,7 @@ L.Path = L.Class.extend({
 		this._updatePath();
 
 		if (this._container) {
-			this._map._pathRoot.appendChild(this._container);
+			this._pathRoot.appendChild(this._container);
 		}
 
 		this.fire('add');
@@ -4197,7 +4203,7 @@ L.Path = L.Class.extend({
 	},
 
 	onRemove: function (map) {
-		map._pathRoot.removeChild(this._container);
+		this._pathRoot.removeChild(this._container);
 
 		// Need to fire remove event before we set _map to null as the event hooks might need the object
 		this.fire('remove');
@@ -4239,6 +4245,14 @@ L.Path = L.Class.extend({
 });
 
 L.Map.include({
+    _pathLayer: function (layer_name) {
+        if (layer_name === 'subtile') {
+            return this._subtilePane;
+        } else {
+            return this._panes.overlayPane;
+        }
+    },
+
 	_updatePathViewport: function () {
 		var p = L.Path.CLIP_PADDING,
 		    size = this.getSize(),
@@ -4265,8 +4279,8 @@ L.Path = L.Path.extend({
 	},
 
 	bringToFront: function () {
-		var root = this._map._pathRoot,
-		    path = this._container;
+		var root = this._pathRoot,
+			path = this._container;
 
 		if (path && root.lastChild !== path) {
 			root.appendChild(path);
@@ -4275,9 +4289,9 @@ L.Path = L.Path.extend({
 	},
 
 	bringToBack: function () {
-		var root = this._map._pathRoot,
-		    path = this._container,
-		    first = root.firstChild;
+		var root = this._pathRoot,
+			path = this._container,
+			first = root.firstChild;
 
 		if (path && first !== path) {
 			root.insertBefore(path, first);
@@ -4293,8 +4307,8 @@ L.Path = L.Path.extend({
 		return document.createElementNS(L.Path.SVG_NS, name);
 	},
 
-	_initElements: function () {
-		this._map._initPathRoot();
+	_initElements: function (layer_name) {
+		this._pathRoot = this._map._initPathRoot(layer_name);
 		this._initPath();
 		this._initStyle();
 	},
@@ -4401,43 +4415,52 @@ L.Path = L.Path.extend({
 });
 
 L.Map.include({
-	_initPathRoot: function () {
-		if (!this._pathRoot) {
-			this._pathRoot = L.Path.prototype._createElement('svg');
-			this._panes.overlayPane.appendChild(this._pathRoot);
+	_initPathRoot: function (layer_name) {
+        var layer = this._pathLayer(layer_name);
+        var pathroot_name = '_pathRoot' + layer_name;
+
+        var pathRoot = this[pathroot_name];
+		if (!pathRoot) {
+			pathRoot = this[pathroot_name] = L.Path.prototype._createElement('svg');
+
+            layer.appendChild(pathRoot);
 
 			if (this.options.zoomAnimation && L.Browser.any3d) {
-				this._pathRoot.setAttribute('class', ' leaflet-zoom-animated');
+				pathRoot.setAttribute('class', ' leaflet-zoom-animated');
 
 				this.on({
-					'zoomanim': this._animatePathZoom,
-					'zoomend': this._endPathZoom
+					'zoomanim': function (opt) { this._animatePathZoom(opt, pathroot_name); },
+					'zoomend': function () { this._endPathZoom(pathroot_name); }
 				});
 			} else {
-				this._pathRoot.setAttribute('class', ' leaflet-zoom-hide');
+				pathRoot.setAttribute('class', ' leaflet-zoom-hide');
 			}
 
-			this.on('moveend', this._updateSvgViewport);
-			this._updateSvgViewport();
+			this.on('moveend', function () {
+                this._updateSvgViewport(layer, pathRoot);
+            });
+			this._updateSvgViewport(layer, pathRoot);
 		}
+        return pathRoot;
 	},
 
-	_animatePathZoom: function (e) {
-		var scale = this.getZoomScale(e.zoom),
-		    offset = this._getCenterOffset(e.center)._multiplyBy(-scale)._add(this._pathViewport.min);
+	_animatePathZoom: function (opt, pathroot_name) {
+        var pathRoot = this[pathroot_name];
 
-		this._pathRoot.style[L.DomUtil.TRANSFORM] =
-		        L.DomUtil.getTranslateString(offset) + ' scale(' + scale + ') ';
+		var scale = this.getZoomScale(opt.zoom),
+			offset = this._getCenterOffset(opt.center).divideBy(1 - 1 / scale),
+			viewportPos = this.containerPointToLayerPoint(this.getSize().multiplyBy(-L.Path.CLIP_PADDING)),
+			origin = viewportPos.add(offset).round();
 
-		this._pathZooming = true;
+		pathRoot.style[L.DomUtil.TRANSFORM] = L.DomUtil.getTranslateString((origin.multiplyBy(-1).add(L.DomUtil.getPosition(pathRoot)).multiplyBy(scale).add(origin))) + ' scale(' + scale + ') ';
+		this[pathroot_name + '_pathZooming'] = true;
 	},
 
-	_endPathZoom: function () {
-		this._pathZooming = false;
+	_endPathZoom: function (pathroot_name) {
+        this[pathroot_name + '_pathZooming'] = false;
 	},
 
-	_updateSvgViewport: function () {
-
+	_updateSvgViewport: function (pane, root) {
 		if (this._pathZooming) {
 			// Do not update SVGs while a zoom animation is going on otherwise the animation will break.
 			// When the zoom animation ends we will be updated again anyway
@@ -4448,12 +4471,10 @@ L.Map.include({
 		this._updatePathViewport();
 
 		var vp = this._pathViewport,
-		    min = vp.min,
-		    max = vp.max,
-		    width = max.x - min.x,
-		    height = max.y - min.y,
-		    root = this._pathRoot,
-		    pane = this._panes.overlayPane;
+			min = vp.min,
+			max = vp.max,
+			width = max.x - min.x,
+		    height = max.y - min.y;
 
 		// Hack to make flicker on drag end on mobile webkit less irritating
 		if (L.Browser.mobileWebkit) {
@@ -4658,7 +4679,8 @@ L.Map.include(L.Browser.svg || !L.Browser.vml ? {} : {
 
 		var root = this._pathRoot = document.createElement('div');
 		root.className = 'leaflet-vml-container';
-		this._panes.overlayPane.appendChild(root);
+		//this._panes.overlayPane.appendChild(root);
+        this._panes.subtilePane.appendChild(this._pathRoot);
 
 		this.on('moveend', this._updatePathViewport);
 		this._updatePathViewport();

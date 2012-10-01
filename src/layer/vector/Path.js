@@ -25,7 +25,8 @@ L.Path = L.Class.extend({
 		fillColor: null, //same as color by default
 		fillOpacity: 0.2,
 
-		clickable: true
+		clickable: true,
+        layer: 'overlay'
 	},
 
 	initialize: function (options) {
@@ -36,7 +37,7 @@ L.Path = L.Class.extend({
 		this._map = map;
 
 		if (!this._container) {
-			this._initElements();
+			this._initElements(this.options.layer);
 			this._initEvents();
 		}
 
@@ -44,7 +45,7 @@ L.Path = L.Class.extend({
 		this._updatePath();
 
 		if (this._container) {
-			this._map._pathRoot.appendChild(this._container);
+			this._pathRoot.appendChild(this._container);
 		}
 
 		this.fire('add');
@@ -61,7 +62,7 @@ L.Path = L.Class.extend({
 	},
 
 	onRemove: function (map) {
-		map._pathRoot.removeChild(this._container);
+		this._pathRoot.removeChild(this._container);
 
 		// Need to fire remove event before we set _map to null as the event hooks might need the object
 		this.fire('remove');
@@ -103,6 +104,14 @@ L.Path = L.Class.extend({
 });
 
 L.Map.include({
+    _pathLayer: function (layer_name) {
+        if (layer_name === 'subtile') {
+            return this._subtilePane;
+        } else {
+            return this._panes.overlayPane;
+        }
+    },
+
 	_updatePathViewport: function () {
 		var p = L.Path.CLIP_PADDING,
 		    size = this.getSize(),

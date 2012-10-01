@@ -4,6 +4,7 @@
 .leaflet-tile,
 .leaflet-marker-icon,
 .leaflet-marker-shadow,
+.leaflet-subtile-pane,
 .leaflet-tile-pane,
 .leaflet-tile-container,
 .leaflet-overlay-pane,
@@ -40,8 +41,18 @@
 	}
 /* stupid Android 2 doesn't understand "max-width: none" properly */
 .leaflet-container img.leaflet-image-layer {
-	max-width: 15000px !important;
-	}
+    /* stupid Android 2 doesn't understand "max-width: none" properly */
+    max-width: 15000px !important;
+    }
+
+.leaflet-subtile-pane { z-index: 2; }
+.leaflet-tile-pane { z-index: 3; }
+.leaflet-objects-pane { z-index: 4; }
+.leaflet-overlay-pane { z-index: 5; }
+.leaflet-shadow-pane { z-index: 6; }
+.leaflet-marker-pane { z-index: 7; }
+.leaflet-popup-pane { z-index: 8; }
+
 .leaflet-tile {
 	filter: inherit;
 	visibility: hidden;
@@ -53,15 +64,6 @@
 	width: 0;
 	height: 0;
 	}
-
-.leaflet-tile-pane    { z-index: 2; }
-.leaflet-objects-pane { z-index: 3; }
-.leaflet-overlay-pane { z-index: 4; }
-.leaflet-shadow-pane  { z-index: 5; }
-.leaflet-marker-pane  { z-index: 6; }
-.leaflet-popup-pane   { z-index: 7; }
-
-
 /* control positioning */
 
 .leaflet-control {
