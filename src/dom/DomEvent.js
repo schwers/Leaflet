@@ -131,7 +131,9 @@ L.DomEvent = {
 	},
 
 	getWheelDelta: function (e) {
+        return (e.detail < 0 || e.wheelDelta > 0) ? 1 : -1;
 
+        /*
 		var delta = 0;
 
 		if (e.wheelDelta) {
@@ -140,7 +142,9 @@ L.DomEvent = {
 		if (e.detail) {
 			delta = -e.detail / 3;
 		}
+
 		return delta;
+        */
 	},
 
 	// check if element really left/entered the event target (for mouseenter/mouseleave)
