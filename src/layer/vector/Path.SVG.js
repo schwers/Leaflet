@@ -159,9 +159,13 @@ L.Map.include({
 				pathRoot.setAttribute('class', ' leaflet-zoom-hide');
 			}
 
-			this.on('moveend', function () {
-                this._updateSvgViewport(layer, pathRoot);
-            });
+			// subtile svg update seems to break positioning .. do this for now
+			if (layer_name != "subtile") {
+				this.on('moveend', function () {
+	                this._updateSvgViewport(layer, pathRoot);
+	            });
+			}
+
 			this._updateSvgViewport(layer, pathRoot);
 		}
         return pathRoot;
